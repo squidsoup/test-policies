@@ -1,0 +1,351 @@
+#################################################################################
+#
+#   Copyright © 2021 Stacklet, Inc. All rights reserved.
+#   CONFIDENTIAL AND PROPRIETARY INFORMATION OF STACKLET, INC.
+#
+#   This file is provided pursuant to the license terms set forth in the Master
+#   Services Agreement, Proof of Concept Agreement and/or Design Partnership
+#   Agreement signed with Stacklet, Inc., if any, or if no such agreement has been
+#   signed, then pursuant to the ‘LICENSE.TXT’ file that accompanies this file.
+#
+#################################################################################
+
+
+
+policies:
+
+#########################################################################
+####
+####  Logging & Metrics
+####
+#########################################################################
+
+#########################################################################
+## Cost Savings - Misconfigured Log Retention
+#########################################################################
+
+- name: aws-cost-cloudwatch-log-group-no-retention
+  resource: aws.log-group
+  metadata:
+    category: [cost/stale-data/logging]
+    creator: Stacklet
+    severity: low
+    recommended_actions:
+        remediation:
+          - name: AWS Docs
+            description: |
+              Review and enable retention period for CloudWatch Log Groups.
+            type: link
+            content: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/Working-with-log-groups-and-streams.html
+          - name: Policy Action
+            description: |
+              Enables AWS CloudWatch Log Group retention by specifying the
+              number of days to retain logs.
+            type: link
+            content: https://cloudcustodian.io/docs/aws/resources/log-group.html#aws-log-group-actions-retention
+        prevention:
+          - name: Policy Suggestion
+            description: |
+              Using a realtime CloudTrail mode CloudWatch Log Group policy,
+              trigger off the CreateLogGroup event, filter for missing retention
+              rules and take the action of retention to apply the appropriate
+              retention period to the log group.
+            type: link
+            content: https://cloudcustodian.io/docs/aws/resources/log-group.html#aws-log-group-actions-retention
+  description: |
+    This policy will identify AWS CloudWatch Log Groups which have no retention
+    period set. Setting a Log Group retention period helps save on costs by
+    removing old logs past X number of days old so you aren't paying for old
+    unused logs and therefore lowers your CloudWatch Logs bill.
+  filters:
+    - or:
+      - "retentionInDays": absent
+      - "retentionInDays": null
+
+
+#########################################################################
+####
+####  Snapshots & Backups
+####
+#########################################################################
+
+#########################################################################
+## Cost Savings - Old EBS Snapshot
+#########################################################################
+
+- name: aws-cost-ebs-old-snapshot
+  resource: aws.ebs-snapshot
+  metadata:
+    category: [cost/stale-data/backup]
+    creator: Stacklet
+    severity: low
+    recommended_actions:
+        remediation:
+          - name: AWS Docs
+            description: |
+              Review old EBS snapshots and delete them.
+            type: link
+            content: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-deleting-snapshot.html
+          - name: Policy Action
+            description: |
+              Deletes EBS snapshots identified by the policy filters.
+            type: link
+            content: https://cloudcustodian.io/docs/aws/resources/ebs-snapshot.html#aws-ebs-snapshot-actions-delete
+  description: |
+    Find snapshots older than 90 days as targets for removal
+  filters:
+    - type: value
+      key: StartTime
+      value_type: age
+      op: greater-than
+      value: 90
+# actions:
+#   - delete
+
+#########################################################################
+## Cost Savings - Old EBS Snapshot
+#########################################################################
+
+- name: aws-cost-redshift-old-snapshot
+  resource: aws.redshift-snapshot
+  metadata:
+    category: [cost/stale-data/backup]
+    creator: Stacklet
+    severity: low
+    recommended_actions:
+        remediation:
+          - name: AWS Docs
+            description: |
+              Review old Redshift snapshots and delete them.
+            type: link
+            content: https://docs.aws.amazon.com/redshift/latest/mgmt/managing-snapshots-console.html
+          - name: Policy Action
+            description: |
+              Deletes Redshift snapshots identified by the policy filters.
+            type: link
+            content: https://cloudcustodian.io/docs/aws/resources/redshift-snapshot.html#aws-redshift-snapshot-actions-delete
+  description: |
+    Older redshift snapshots may represent unused storage data.
+  filters:
+    - type: value
+      key: SnapshotCreateTime
+      value: 90
+      op: greater-than
+      value_type: age
+
+
+#########################################################################
+## Cost Savings - Old RDS Snapshot
+#########################################################################
+
+- name: aws-cost-rds-old-snapshot
+  resource: aws.rds-snapshot
+  metadata:
+    category: [cost/stale-data/backup]
+    creator: Stacklet
+    severity: low
+    recommended_actions:
+        remediation:
+          - name: AWS Docs
+            description: |
+              Review old RDS snapshots and delete them.
+            type: link
+            content: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_DeleteSnapshot.html
+          - name: Policy Action
+            description: |
+              Deletes RDS snapshots identified by the policy filters.
+            type: link
+            content: https://cloudcustodian.io/docs/aws/resources/rds-snapshot.html#aws-rds-snapshot-actions-delete
+  description: |
+    RDS snapshots older than 60 days that potentially can be deleted to save
+    costs.
+  filters:
+    - type: value
+      key: SnapshotCreateTime
+      value_type: age
+      op: greater-than
+      value: 60
+
+
+
+
+#########################################################################
+## Cost Savings - Old RDS Cluster Snapshot
+#########################################################################
+
+- name: aws-cost-rds-cluster-old-snapshot
+  resource: aws.rds-cluster-snapshot
+  metadata:
+    category: [cost/stale-data/backup]
+    creator: Stacklet
+    severity: low
+    recommended_actions:
+        remediation:
+          - name: AWS Docs
+            description: |
+              Review old RDS Cluster snapshots and delete them.
+            type: link
+            content: https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_DeleteSnapshot.html
+          - name: Policy Action
+            description: |
+              Deletes RDS Cluster snapshots identified by the policy filters.
+            type: link
+            content: https://cloudcustodian.io/docs/aws/resources/rds-cluster-snapshot.html#aws-rds-cluster-snapshot-actions-delete
+  description: |
+    RDS Cluster snapshots older than 60 days that potentially can be deleted to
+    save costs.
+  filters:
+    - type: value
+      key: SnapshotCreateTime
+      value_type: age
+      op: greater-than
+      value: 60
+  actions:
+    - type: tag
+      tags:
+        CostSavingsEligible: "True"
+        ActionNeeded: "Delete this old RDS Cluster snapshot as it is over 60 days old"
+
+#########################################################################
+####
+####  Artifacts
+####
+#########################################################################
+
+#########################################################################
+## Cost Savings - Old AMIs
+#########################################################################
+
+- name: aws-cost-ami-old-and-unused
+  resource: aws.ami
+  metadata:
+    category: [cost/stale-data/artifacts]
+    creator: Stacklet
+    severity: low
+    recommended_actions:
+        remediation:
+          - name: AWS Docs
+            description: |
+              Review old AMIs and deregister them.
+            type: link
+            content: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/deregister-ami.html
+          - name: Policy Action
+            description: |
+              Deregisters AMIs identified by the policy filters.
+            type: link
+            content: https://cloudcustodian.io/docs/aws/resources/ami.html#aws-ami-actions-deregister
+  description: |
+    This cost savings policy will find AWS AMIs which are 90+ days old and not
+    being used by current infrastructure. Deregistering these unused old AMIs
+    can help your organization save on costs.
+  filters:
+    - type: unused
+      value: true
+    - type: image-age
+      days: 90
+      op: greater-than
+  actions:
+    - type: tag
+      tags:
+        CostSavingsEligible: "True"
+        ActionNeeded: "Delete this AMI as it is unused and older than 90 days"
+#  actions:
+#    - deregister
+
+#########################################################################
+## Cost Savings - Misconfigured ECR Registries
+#########################################################################
+
+- name: aws-cost-ecr-no-lifecycle
+  resource: aws.ecr
+  metadata:
+    category: [cost/stale-data/artifacts]
+    creator: Stacklet
+    severity: low
+    recommended_actions:
+        remediation:
+          - name: AWS Docs
+            description: |
+              Review ECRs and enable a lifecycle.
+            type: link
+            content: https://docs.aws.amazon.com/AmazonECR/latest/userguide/lp_creation.html
+          - name: Policy Action
+            description: |
+              Enables lifecycle for ECRs identified by the policy filters.
+            type: link
+            content: https://cloudcustodian.io/docs/aws/resources/ecr.html#set-lifecycle
+        prevention:
+          - name: Policy Suggestion
+            description: |
+              Using a realtime CloudTrail mode ECR policy, trigger off the
+              CreateRepository event, filter for missing lifecycle rules and
+              take the action of set-lifecycle-rule to apply the appropriate
+              lifecycle to the repository.
+            type: link
+            content: https://cloudcustodian.io/docs/aws/resources/ecr.html#set-lifecycle
+  description: |
+    Find container registries without a lifecycle policy associated. This means
+    that they are typically accumulating unused images. Lifecycle rules can be
+    applied to delete untagged or tagged images after a set time period.
+  filters:
+    - type: lifecycle-rule
+      state: false
+
+# policy can also be used to apply a lifecycle policy
+#  actions:
+#    - type: set-lifecycle-rule
+#      rules:
+#        - description: remove-old-untagged
+#          action: expire
+#          selection:
+#            countNumber: 30
+#            countUnit: days
+#            tagStatus: untagged
+
+#####################################################################################
+## Cost Savings - Identify buckets missing lifecycle rules
+#####################################################################################
+
+- name: aws-cost-s3-no-mpu-cleanup-rule
+  resource: aws.s3
+  metadata:
+    category: [cost/stale-data/artifacts]
+    creator: Stacklet
+    severity: low
+    recommended_actions:
+        remediation:
+          - name: AWS Docs
+            description: |
+              Review S3 buckets and enable a lifecycle.
+            type: link
+            content: https://docs.aws.amazon.com/AmazonS3/latest/userguide/how-to-set-lifecycle-configuration-intro.html
+          - name: Policy Action
+            description: |
+              Enables lifecycle for ECRs identified by the policy filters.
+            type: link
+            content: https://cloudcustodian.io/docs/aws/resources/s3.html#aws-s3-actions-configure-lifecycle
+        prevention:
+          - name: Policy Suggestion
+            description: |
+              Using a realtime CloudTrail mode S3 policy, trigger off the
+              CreateBucket event, filter for missing lifecycle rules and take
+              the action of set-lifecycle-rule to apply the appropriate
+              lifecycle to the S3 bucket.
+            type: link
+            content: https://cloudcustodian.io/docs/aws/resources/s3.html#aws-s3-actions-configure-lifecycle
+  description: |
+    Configures a lifecycle rule to clean up incomplete multipart uploads when
+    such a rule doesn't already exist.
+  filters:
+    - "Lifecycle.Rules[?Status==`Enabled`].AbortIncompleteMultipartUpload.DaysAfterInitiation": empty
+
+
+  # actions:
+  #   - type: configure-lifecycle
+  #     rules:
+  #       - ID: mpu-cleanup
+  #         Status: Enabled
+  #         AbortIncompleteMultipartUpload:
+  #           DaysAfterInitiation: 7
+  #         Filter:
+  #           Prefix: ""
